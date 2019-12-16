@@ -4,6 +4,7 @@ from PIL import Image, ImageTk
 
 from MapCoodinator import MapCoodinator
 from DroneController import DroneController
+import ObstacleDetector
 
 class WindowController(tkinter.Frame):
 
@@ -24,7 +25,9 @@ class WindowController(tkinter.Frame):
         self.draw_home_point(point_x, point_y)
         print("drown points are {0}, {1}".format(point_x, point_y))
 
-        self.droneController.arm_and_takeoff(20)
+        self.after(100, self.continuous_task)
+        # self.droneController.arm_and_takeoff(20)
+
 
     def create_widgets(self):
         self.button_go_to_click_point = tkinter.ttk.Button(self, text=u'go to click point', command=self.go_to_click_point)
@@ -58,6 +61,18 @@ class WindowController(tkinter.Frame):
         plot_size = 4
         self.test_canvas.delete("click_point")
         self.test_canvas.create_oval(point_x - plot_size/2, point_y - plot_size/2, point_x + plot_size/2, point_y + plot_size, tag="click_point")
+
+    def draw_obstacle(self, lat, lon):
+        point_x, point_y = self._mapCoordinator.get_point_on_image(lat, lon)
+        plot_size = 6
+        self.test_canvas.create_oval(point_x - plot_size/2, point_y - plot_size/2, point_x + plot_size/2, point_y + plot_size, fill="yellow")
+
+    def continuous_task(self):
+        vehicle_state = self.droneController.get_vehicle_state()
+        if not vehicle_state['obstacle_lat'] == None:
+            self.draw_obstacle(vehicle_state['obstacle_lat'], vehicle_state['obstacle_lon'])
+        print("get it")
+        self.after(1000, self.continuous_task)
 
 root = tkinter.Tk()
 windowController = WindowController(master=root)

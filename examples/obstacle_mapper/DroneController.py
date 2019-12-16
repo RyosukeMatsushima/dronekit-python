@@ -10,6 +10,9 @@ import tkinter
 
 # Set up option parsing to get connection string
 import argparse
+import math
+
+import ObstacleDetector
 
 class DroneController():
     def __init__(self):
@@ -38,7 +41,7 @@ class DroneController():
         self.vehicle = connect(self.connection_string, wait_ready=True)
 
         
-        self.arm_and_takeoff(20)
+        # self.arm_and_takeoff(20)
 
         print("Set default/target airspeed to 3")
         self.vehicle.airspeed = 3
@@ -83,6 +86,46 @@ class DroneController():
         point1 = LocationGlobalRelative(self.click_point_lat, self.click_point_lon, 20)
         self.vehicle.simple_goto(point1, groundspeed=10)
         print("go to lat{0}, lon{1}".format(self.click_point_lat, self.click_point_lon))
+
+    def get_vehicle_state(self):
+        print("rangeFinder{}".format(self.vehicle.rangefinder.distance))
+        print("max range{}".format(self.vehicle.parameters.get('RNGFND1_MAX_CM')))
+        obstacle_gps = self.get_obstacle_gps()
+
+        if not obstacle_gps == None:
+            obstacle_lat = obstacle_gps['lat']
+            obstacle_lon = obstacle_gps['lon']
+        else:
+            obstacle_lat = None
+            obstacle_lon = None
+        
+
+        return {
+            'lat': self.vehicle.location.global_frame.lat,
+            'lon': self.vehicle.location.global_frame.lon,
+            'altuitude': self.vehicle.location.global_frame.alt,
+            'yaw': self.vehicle.attitude.yaw,
+            'obstacle_lat': obstacle_lat,
+            'obstacle_lon': obstacle_lon
+        }
+
+    def get_obstacle_gps(self):
+        rngfnd_distance = self.vehicle.rangefinder.distance
+        rngfnd1_max = self.vehicle.parameters.get('RNGFND1_MAX_CM')/100 * 0.8
+
+        altitude = self.vehicle.location.global_frame.alt
+        pitch = self.vehicle.attitude.pitch * math.pi/180
+        rngfnd1_max = min(rngfnd1_max, altitude/math.sin(pitch))
+        if rngfnd_distance == None or rngfnd_distance > rngfnd1_max:
+            return None
+        
+        lat = self.vehicle.location.global_frame.lat
+        lon = self.vehicle.location.global_frame.lon
+        yaw = self.vehicle.attitude.yaw
+        drone2obstacle = self.vehicle.rangefinder.distance * math.sin(self.vehicle.attitude.pitch * math.pi/180)
+        return ObstacleDetector.vincenty_direct(lat, lon, yaw, drone2obstacle)
+        
+        
 
     def deinit(self):
         print("Returning to Launch")
