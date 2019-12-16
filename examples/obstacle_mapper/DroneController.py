@@ -114,7 +114,7 @@ class DroneController():
         rngfnd1_max = self.vehicle.parameters.get('RNGFND1_MAX_CM')/100 * 0.8
 
         altitude = self.vehicle.location.global_frame.alt
-        pitch = self.vehicle.attitude.pitch * math.pi/180
+        pitch = self.vehicle.attitude.pitch
         rngfnd1_max = min(rngfnd1_max, altitude/math.sin(pitch))
         if rngfnd_distance == None or rngfnd_distance > rngfnd1_max:
             return None
@@ -122,8 +122,8 @@ class DroneController():
         lat = self.vehicle.location.global_frame.lat
         lon = self.vehicle.location.global_frame.lon
         yaw = self.vehicle.attitude.yaw
-        drone2obstacle = self.vehicle.rangefinder.distance * math.sin(self.vehicle.attitude.pitch * math.pi/180)
-        return ObstacleDetector.vincenty_direct(lat, lon, yaw, drone2obstacle)
+        drone2obstacle = self.vehicle.rangefinder.distance * math.sin(self.vehicle.attitude.pitch)
+        return ObstacleDetector.vincenty_direct(lat, lon, yaw * 180/math.pi, drone2obstacle)
         
         
 
