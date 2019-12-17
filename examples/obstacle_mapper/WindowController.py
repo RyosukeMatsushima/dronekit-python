@@ -2,6 +2,8 @@ import tkinter
 import tkinter.ttk
 from PIL import Image, ImageTk
 
+import time
+
 from MapCoodinator import MapCoodinator
 from DroneController import DroneController
 import ObstacleDetector
@@ -16,6 +18,8 @@ class WindowController(tkinter.Frame):
 
         self.droneController = DroneController()
 
+        time.sleep(4)
+
         home_lat = self.droneController.vehicle.location.global_frame.lat
         home_lon = self.droneController.vehicle.location.global_frame.lon
         self._mapCoordinator = MapCoodinator(home_lat, home_lon, 19)
@@ -25,16 +29,18 @@ class WindowController(tkinter.Frame):
         self.draw_home_point(point_x, point_y)
         print("drown points are {0}, {1}".format(point_x, point_y))
 
-        self.after(100, self.continuous_task)
-        # self.droneController.arm_and_takeoff(20)
+        # self.after(100, self.continuous_task)
+        self.droneController.arm_and_takeoff(20)
 
 
     def create_widgets(self):
         self.button_go_to_click_point = tkinter.ttk.Button(self, text=u'go to click point', command=self.go_to_click_point)
+        self.button_guid_to_click_point = tkinter.ttk.Button(self, text=u'guid to click point', command=self.droneController.guid_to_click_point)
 
         self.label_description = tkinter.ttk.Label(self, text='Mouse position')
         self.label_description.grid(row=0, column=1)
         self.button_go_to_click_point.grid(row=1, column=1, columnspan=2)
+        self.button_guid_to_click_point.grid(row=2, column=1,columnspan=2)
 
         self.test_canvas = tkinter.Canvas(self, bg='lightblue', width=256*3, height=256*3, highlightthickness=0)
         self.test_canvas.grid(row=0, column=0, rowspan=7)
@@ -71,7 +77,7 @@ class WindowController(tkinter.Frame):
         vehicle_state = self.droneController.get_vehicle_state()
         if not vehicle_state['obstacle_lat'] == None:
             self.draw_obstacle(vehicle_state['obstacle_lat'], vehicle_state['obstacle_lon'])
-        print("get it")
+        print("get yaw{}".format(vehicle_state['yaw']))
         self.after(1000, self.continuous_task)
 
 root = tkinter.Tk()

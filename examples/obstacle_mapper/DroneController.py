@@ -4,6 +4,7 @@
 from __future__ import print_function
 import time
 from dronekit import connect, VehicleMode, LocationGlobalRelative
+from pymavlink import mavutil
 
 # for WindowController
 import tkinter
@@ -13,6 +14,7 @@ import argparse
 import math
 
 import ObstacleDetector
+from GuidingLaw import GuidingLaw
 
 class DroneController():
     def __init__(self):
@@ -82,10 +84,76 @@ class DroneController():
             time.sleep(1)
 
     def go_to_click_point(self):
-        print("task")    
+        print("task")
+        lat = self.vehicle.location.global_frame.lat
+        lon = self.vehicle.location.global_frame.lon
+        result = ObstacleDetector.vincenty_inverse(lat, lon, self.click_point_lat, self.click_point_lon)
+        print("d2c yaw {0} distance {1}".format(result['azimuth1'], result['distance']))
+
         point1 = LocationGlobalRelative(self.click_point_lat, self.click_point_lon, 20)
         self.vehicle.simple_goto(point1, groundspeed=10)
         print("go to lat{0}, lon{1}".format(self.click_point_lat, self.click_point_lon))
+
+    def guid_to_click_point(self):
+        while not self.is_reached(self.click_point_lat, self.click_point_lon, 10):
+            time.sleep(3)
+            print("go next point")   
+            next_point = self.get_next_point_gps()
+            self.go_to(next_point['lat'], next_point['lon'], 20)
+
+        print("reached click point")
+
+
+    def go_to(self, lat, lon, alt):
+        point1 = LocationGlobalRelative(lat, lon, alt)
+        self.vehicle.simple_goto(point1, groundspeed=10)
+        print("go to lat{0}, lon{1}".format(self.click_point_lat, self.click_point_lon))
+
+        while self.vehicle.mode.name=="GUIDED":
+            time.sleep(2)
+            print('I am going')
+            if self.is_reached(lat, lon, 1):
+                print('reached to point')
+                break
+
+
+    def is_reached(self, target_lat, target_lon, threshold):
+        lat = self.vehicle.location.global_frame.lat
+        lon = self.vehicle.location.global_frame.lon
+        result = ObstacleDetector.vincenty_inverse(lat, lon, target_lat, target_lon)
+        return result['distance'] < threshold
+
+        
+    def condition_yaw(self, heading, yaw_rate, relative=False):
+        """
+        Send MAV_CMD_CONDITION_YAW message to point vehicle at a specified heading (in degrees).
+
+        This method sets an absolute heading by default, but you can set the `relative` parameter
+        to `True` to set yaw relative to the current yaw heading.
+
+        By default the yaw of the vehicle will follow the direction of travel. After setting 
+        the yaw using this function there is no way to return to the default yaw "follow direction 
+        of travel" behaviour (https://github.com/diydrones/ardupilot/issues/2427)
+
+        For more information see: 
+        http://copter.ardupilot.com/wiki/common-mavlink-mission-command-messages-mav_cmd/#mav_cmd_condition_yaw
+        """
+        if relative:
+            is_relative = 1 #yaw relative to direction of travel
+        else:
+            is_relative = 0 #yaw is an absolute angle
+        # create the CONDITION_YAW command using command_long_encode()
+        msg = self.vehicle.message_factory.command_long_encode(
+            0, 0,    # target system, target component
+            mavutil.mavlink.MAV_CMD_CONDITION_YAW, #command
+            0, #confirmation
+            heading,    # param 1, yaw in degrees
+            yaw_rate,          # param 2, yaw speed deg/s
+            1,          # param 3, direction -1 ccw, 1 cw
+            is_relative, # param 4, relative offset 1, absolute angle 0
+            0, 0, 0)    # param 5 ~ 7 not used
+        # send command to vehicle
+        self.vehicle.send_mavlink(msg)
 
     def get_vehicle_state(self):
         print("rangeFinder{}".format(self.vehicle.rangefinder.distance))
@@ -109,12 +177,56 @@ class DroneController():
             'obstacle_lon': obstacle_lon
         }
 
+    def turn_cw(self):
+        for i in range(0, 37):
+            self.condition_yaw(10, 0, True)
+            time.sleep(0.5)
+
+    def get_next_point_gps(self):
+        lat = self.vehicle.location.global_frame.lat
+        lon = self.vehicle.location.global_frame.lon
+        result = ObstacleDetector.vincenty_inverse(lat, lon, self.click_point_lat, self.click_point_lon)
+        print("d2c yaw {0} distance {1}".format(result['azimuth1'], result['distance']))
+        # guidingLaw = GuidingLaw(self.vehicle.location.global_frame.alt, self.vehicle.location.global_frame.lon, self.click_point_lat, self.click_point_lon, float(self.vehicle.parameters.get('RNGFND1_MAX_CM'))/100)
+        guidingLaw = GuidingLaw(result['azimuth1'], result['distance'], 30)
+        for i in range(0, 37):
+            time.sleep(0.5)
+
+            for j in range(0, 100):
+                obstacle_distance_list = []
+                distance = self.get_obstacle_distance()
+                if not distance == None:
+                    obstacle_distance_list.append(distance)
+
+            if not obstacle_distance_list == []:
+                guidingLaw.update_low2obstacle(self.vehicle.attitude.yaw, obstacle_distance_list)
+            self.condition_yaw(10, 0, True)
+
+        yaw2next_point, distance = guidingLaw.get_next_point()
+        lat = self.vehicle.location.global_frame.lat
+        lon = self.vehicle.location.global_frame.lon
+
+        return ObstacleDetector.vincenty_direct(lat, lon, yaw2next_point, distance)
+        
+    def get_obstacle_distance(self):
+        rngfnd_distance = self.vehicle.rangefinder.distance
+        rngfnd1_max = float(self.vehicle.parameters.get('RNGFND1_MAX_CM'))/100
+
+        altitude = self.vehicle.location.global_frame.alt
+        pitch = self.vehicle.attitude.pitch
+        rngfnd1_max = min(rngfnd1_max, altitude/math.sin(pitch))
+        if rngfnd_distance == None or rngfnd_distance > rngfnd1_max:
+            return None
+
+        drone2obstacle = self.vehicle.rangefinder.distance * math.sin(self.vehicle.attitude.pitch)
+        return drone2obstacle
+
     def get_obstacle_gps(self):
         rngfnd_distance = self.vehicle.rangefinder.distance
         rngfnd1_max = self.vehicle.parameters.get('RNGFND1_MAX_CM')/100 * 0.8
 
         altitude = self.vehicle.location.global_frame.alt
-        pitch = self.vehicle.attitude.pitch * math.pi/180
+        pitch = self.vehicle.attitude.pitch
         rngfnd1_max = min(rngfnd1_max, altitude/math.sin(pitch))
         if rngfnd_distance == None or rngfnd_distance > rngfnd1_max:
             return None
@@ -122,8 +234,8 @@ class DroneController():
         lat = self.vehicle.location.global_frame.lat
         lon = self.vehicle.location.global_frame.lon
         yaw = self.vehicle.attitude.yaw
-        drone2obstacle = self.vehicle.rangefinder.distance * math.sin(self.vehicle.attitude.pitch * math.pi/180)
-        return ObstacleDetector.vincenty_direct(lat, lon, yaw, drone2obstacle)
+        drone2obstacle = self.vehicle.rangefinder.distance * math.sin(self.vehicle.attitude.pitch)
+        return ObstacleDetector.vincenty_direct(lat, lon, yaw * 180/math.pi, drone2obstacle)
         
         
 
