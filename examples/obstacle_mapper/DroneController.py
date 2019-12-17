@@ -12,6 +12,7 @@ import tkinter
 # Set up option parsing to get connection string
 import argparse
 import math
+import statistics
 
 import ObstacleDetector
 from GuidingLaw import GuidingLaw
@@ -112,7 +113,7 @@ class DroneController():
         while self.vehicle.mode.name=="GUIDED":
             time.sleep(2)
             print('I am going')
-            if self.is_reached(lat, lon, 1):
+            if self.is_reached(lat, lon, 2):
                 print('reached to point')
                 break
 
@@ -155,33 +156,6 @@ class DroneController():
         # send command to vehicle
         self.vehicle.send_mavlink(msg)
 
-    def get_vehicle_state(self):
-        print("rangeFinder{}".format(self.vehicle.rangefinder.distance))
-        print("max range{}".format(self.vehicle.parameters.get('RNGFND1_MAX_CM')))
-        obstacle_gps = self.get_obstacle_gps()
-
-        if not obstacle_gps == None:
-            obstacle_lat = obstacle_gps['lat']
-            obstacle_lon = obstacle_gps['lon']
-        else:
-            obstacle_lat = None
-            obstacle_lon = None
-        
-
-        return {
-            'lat': self.vehicle.location.global_frame.lat,
-            'lon': self.vehicle.location.global_frame.lon,
-            'altuitude': self.vehicle.location.global_frame.alt,
-            'yaw': self.vehicle.attitude.yaw,
-            'obstacle_lat': obstacle_lat,
-            'obstacle_lon': obstacle_lon
-        }
-
-    def turn_cw(self):
-        for i in range(0, 37):
-            self.condition_yaw(10, 0, True)
-            time.sleep(0.5)
-
     def get_next_point_gps(self):
         lat = self.vehicle.location.global_frame.lat
         lon = self.vehicle.location.global_frame.lon
@@ -199,6 +173,9 @@ class DroneController():
 
             if not obstacle_distance_list == []:
                 guidingLaw.update_low2obstacle(self.vehicle.attitude.yaw, obstacle_distance_list)
+                median_distance = statistics.median(obstacle_distance_list)
+                self.add_obstacle_to_map(median_distance)
+
             self.condition_yaw(10, True)
 
         yaw2next_point, distance = guidingLaw.get_next_point()
@@ -222,22 +199,18 @@ class DroneController():
         drone2obstacle = self.vehicle.rangefinder.distance * math.sin(self.vehicle.attitude.pitch)
         return drone2obstacle
 
-    def get_obstacle_gps(self):
-        rngfnd_distance = self.vehicle.rangefinder.distance
-        rngfnd1_max = self.vehicle.parameters.get('RNGFND1_MAX_CM')/100 * 0.8
-
-        altitude = self.vehicle.location.global_frame.alt
-        pitch = self.vehicle.attitude.pitch
-        rngfnd1_max = min(rngfnd1_max, altitude/math.sin(pitch))
-        if rngfnd_distance == None or rngfnd_distance > rngfnd1_max:
-            return None
+    def add_obstacle_to_map(self, distance):
         
         lat = self.vehicle.location.global_frame.lat
         lon = self.vehicle.location.global_frame.lon
         yaw = self.vehicle.attitude.yaw
-        drone2obstacle = self.vehicle.rangefinder.distance * math.sin(self.vehicle.attitude.pitch)
-        return ObstacleDetector.vincenty_direct(lat, lon, yaw * 180/math.pi, drone2obstacle)
-        
+        result = ObstacleDetector.vincenty_direct(lat, lon, yaw, distance)
+
+    def get_drone_position(self):
+        lat = self.vehicle.location.global_frame.lat
+        lon = self.vehicle.location.global_frame.lon
+
+        return lat, lon
         
 
     def deinit(self):

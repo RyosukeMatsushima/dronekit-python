@@ -1,6 +1,7 @@
 import tkinter
 import tkinter.ttk
 from PIL import Image, ImageTk
+import threading
 
 import time
 
@@ -31,6 +32,9 @@ class WindowController(tkinter.Frame):
 
         # self.after(100, self.continuous_task)
         self.droneController.arm_and_takeoff(20)
+
+        self.thread_1 = threading.Thread(target=self.continuous_task)
+        self.thread_1.start()
 
 
     def create_widgets(self):
@@ -73,12 +77,17 @@ class WindowController(tkinter.Frame):
         plot_size = 6
         self.test_canvas.create_oval(point_x - plot_size/2, point_y - plot_size/2, point_x + plot_size/2, point_y + plot_size, fill="yellow")
 
+    def draw_vehicle_position(self, lat, lon):
+        self.test_canvas.delete("vehicle_positin")
+        point_x, point_y = self._mapCoordinator.get_point_on_image(lat, lon)
+        plot_size = 6
+        self.test_canvas.create_oval(point_x - plot_size/2, point_y - plot_size/2, point_x + plot_size/2, point_y + plot_size, fill="blue", tag="vehicle_positin")
+
     def continuous_task(self):
-        vehicle_state = self.droneController.get_vehicle_state()
-        if not vehicle_state['obstacle_lat'] == None:
-            self.draw_obstacle(vehicle_state['obstacle_lat'], vehicle_state['obstacle_lon'])
-        print("get yaw{}".format(vehicle_state['yaw']))
-        self.after(1000, self.continuous_task)
+        while True:
+            lat, lon = self.droneController.get_drone_position()
+            self.draw_vehicle_position(lat, lon)
+            time.sleep(1)
 
 root = tkinter.Tk()
 windowController = WindowController(master=root)
