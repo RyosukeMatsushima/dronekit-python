@@ -95,7 +95,14 @@ class WindowController(tkinter.Frame):
         while True:
             lat, lon = self.droneController.get_drone_position()
             self.draw_vehicle_position(lat, lon)
+            self.get_obstacle()
             time.sleep(1)
+
+    def get_obstacle(self):
+        stock = self.droneController.get_draw_obstacle_stock()
+        if not stock == []:
+            for position in stock:
+                self.draw_obstacle(position['lat'], position['lon'])
 
 root = tkinter.Tk()
 windowController = WindowController(master=root)

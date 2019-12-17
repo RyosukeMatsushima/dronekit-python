@@ -31,6 +31,8 @@ class DroneController():
         self.connection_string = self.args.connect
         self.sitl = None
 
+        self.draw_obstacle_stock = []
+
 
         # Start SITL if no connection string specified
         if not self.connection_string:
@@ -168,13 +170,18 @@ class DroneController():
             for j in range(0, 100):
                 obstacle_distance_list = []
                 distance = self.get_obstacle_distance()
+
+                # if 0 < self.vehicle.attitude.yaw < 30 * math.pi/180:  #for test
+                #     distance = 6
+
                 if not distance == None:
                     obstacle_distance_list.append(distance)
 
             if not obstacle_distance_list == []:
-                guidingLaw.update_low2obstacle(self.vehicle.attitude.yaw, obstacle_distance_list)
+                yaw = self.vehicle.attitude.yaw
+                guidingLaw.update_low2obstacle(yaw, obstacle_distance_list)
                 median_distance = statistics.median(obstacle_distance_list)
-                self.add_obstacle_to_map(median_distance)
+                self.add_obstacle_to_map(median_distance, yaw)
 
             self.condition_yaw(10, True)
 
@@ -199,12 +206,19 @@ class DroneController():
         drone2obstacle = self.vehicle.rangefinder.distance * math.sin(self.vehicle.attitude.pitch)
         return drone2obstacle
 
-    def add_obstacle_to_map(self, distance):
+    def add_obstacle_to_map(self, distance, yaw):
         
         lat = self.vehicle.location.global_frame.lat
         lon = self.vehicle.location.global_frame.lon
-        yaw = self.vehicle.attitude.yaw
+        yaw *= 180/math.pi
         result = ObstacleDetector.vincenty_direct(lat, lon, yaw, distance)
+        self.draw_obstacle_stock.append(result)
+
+    def get_draw_obstacle_stock(self):
+        stock = self.draw_obstacle_stock
+        self.draw_obstacle_stock = []
+
+        return stock
 
     def get_drone_position(self):
         lat = self.vehicle.location.global_frame.lat
