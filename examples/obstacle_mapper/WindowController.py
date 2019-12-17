@@ -33,13 +33,13 @@ class WindowController(tkinter.Frame):
         # self.after(100, self.continuous_task)
         self.droneController.arm_and_takeoff(20)
 
-        self.thread_1 = threading.Thread(target=self.continuous_task)
-        self.thread_1.start()
+        self.continuous_task_thread = threading.Thread(target=self.continuous_task)
+        self.continuous_task_thread.start()
 
 
     def create_widgets(self):
         self.button_go_to_click_point = tkinter.ttk.Button(self, text=u'go to click point', command=self.go_to_click_point)
-        self.button_guid_to_click_point = tkinter.ttk.Button(self, text=u'guid to click point', command=self.droneController.guid_to_click_point)
+        self.button_guid_to_click_point = tkinter.ttk.Button(self, text=u'guid to click point', command=self.set_guid_to_click_point)
 
         self.label_description = tkinter.ttk.Label(self, text='Mouse position')
         self.label_description.grid(row=0, column=1)
@@ -57,6 +57,14 @@ class WindowController(tkinter.Frame):
         if self.droneController.click_point_lat != None and self.droneController.click_point_lon != None:
             print("let's go")
             self.droneController.go_to_click_point()
+
+    def set_guid_to_click_point(self):
+        self.guid_to_click_point_thread = threading.Thread(target=self.while_guid_to_task)
+        self.guid_to_click_point_thread.start()
+
+    def while_guid_to_task(self):
+        if self.droneController.click_point_lat != None and self.droneController.click_point_lon != None:
+            self.droneController.guid_to_click_point()
 
     def start_pickup(self, event):
         self.droneController.click_point_lat, self.droneController.click_point_lon = self._mapCoordinator.getGPS(event.x, event.y)

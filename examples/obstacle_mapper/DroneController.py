@@ -96,7 +96,7 @@ class DroneController():
         print("go to lat{0}, lon{1}".format(self.click_point_lat, self.click_point_lon))
 
     def guid_to_click_point(self):
-        while not self.is_reached(self.click_point_lat, self.click_point_lon, 10):
+        while not self.is_reached(self.click_point_lat, self.click_point_lon, 3):
             time.sleep(3)
             print("go next point")   
             next_point = self.get_next_point_gps()
