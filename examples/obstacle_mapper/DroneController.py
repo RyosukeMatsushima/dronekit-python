@@ -124,7 +124,7 @@ class DroneController():
         return result['distance'] < threshold
 
         
-    def condition_yaw(self, heading, yaw_rate, relative=False):
+    def condition_yaw(self, heading, relative=False):
         """
         Send MAV_CMD_CONDITION_YAW message to point vehicle at a specified heading (in degrees).
 
@@ -148,7 +148,7 @@ class DroneController():
             mavutil.mavlink.MAV_CMD_CONDITION_YAW, #command
             0, #confirmation
             heading,    # param 1, yaw in degrees
-            yaw_rate,          # param 2, yaw speed deg/s
+            0,          # param 2, yaw speed deg/s
             1,          # param 3, direction -1 ccw, 1 cw
             is_relative, # param 4, relative offset 1, absolute angle 0
             0, 0, 0)    # param 5 ~ 7 not used
@@ -187,8 +187,7 @@ class DroneController():
         lon = self.vehicle.location.global_frame.lon
         result = ObstacleDetector.vincenty_inverse(lat, lon, self.click_point_lat, self.click_point_lon)
         print("d2c yaw {0} distance {1}".format(result['azimuth1'], result['distance']))
-        # guidingLaw = GuidingLaw(self.vehicle.location.global_frame.alt, self.vehicle.location.global_frame.lon, self.click_point_lat, self.click_point_lon, float(self.vehicle.parameters.get('RNGFND1_MAX_CM'))/100)
-        guidingLaw = GuidingLaw(result['azimuth1'], result['distance'], 30)
+        guidingLaw = GuidingLaw(result['azimuth1'], result['distance'], float(self.vehicle.parameters.get('RNGFND1_MAX_CM'))/100)
         for i in range(0, 37):
             time.sleep(0.5)
 
@@ -200,9 +199,11 @@ class DroneController():
 
             if not obstacle_distance_list == []:
                 guidingLaw.update_low2obstacle(self.vehicle.attitude.yaw, obstacle_distance_list)
-            self.condition_yaw(10, 0, True)
+            self.condition_yaw(10, True)
 
         yaw2next_point, distance = guidingLaw.get_next_point()
+        self.condition_yaw(yaw2next_point)
+        time.sleep(2)
         lat = self.vehicle.location.global_frame.lat
         lon = self.vehicle.location.global_frame.lon
 
