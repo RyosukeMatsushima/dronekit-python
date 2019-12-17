@@ -1,4 +1,5 @@
 import MapCoodinator
+import math
 
 def mapCoodinatorTest():
     # Create a new instance of GoogleMap 
@@ -26,8 +27,20 @@ def mapCoodinatorTest():
     test_lat, test_lng = gmd.getGPS(point_x, point_y)
     print("diff of lat, log are {0}, {1}".format(test_lat, test_lng))
 
+import GuidingLaw
+
+def guiding_law_test():
+    target_lat = 35.725496
+    target_lon = 140.056374
+    drone_lat = 35.725497
+    drone_lon = 140.056375
+    guidingLaw = GuidingLaw.GuidingLaw(60, 29, 20)
+    yaw, distance = guidingLaw.get_next_point()
+    print("yaw {0} distance {1}".format(yaw, distance))
+
 
 def main():
-    mapCoodinatorTest()
+    # mapCoodinatorTest()
+    guiding_law_test()
 
 if __name__ == '__main__':  main()
