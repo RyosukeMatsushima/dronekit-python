@@ -8,6 +8,7 @@ import time
 from MapCoodinator import MapCoodinator
 from DroneController import DroneController
 import ObstacleDetector
+from RequestState import RequestState
 
 class WindowController(tkinter.Frame):
 
@@ -40,11 +41,13 @@ class WindowController(tkinter.Frame):
     def create_widgets(self):
         self.button_go_to_click_point = tkinter.ttk.Button(self, text=u'go to click point', command=self.go_to_click_point)
         self.button_guid_to_click_point = tkinter.ttk.Button(self, text=u'guid to click point', command=self.set_guid_to_click_point)
+        self.button_stop_drone = tkinter.ttk.Button(self, text=u'stop_drone', command=self.stop_drone)
 
         self.label_description = tkinter.ttk.Label(self, text='Mouse position')
         self.label_description.grid(row=0, column=1)
         self.button_go_to_click_point.grid(row=1, column=1, columnspan=2)
         self.button_guid_to_click_point.grid(row=2, column=1,columnspan=2)
+        self.button_stop_drone.grid(row=3, column=1,columnspan=2)
 
         self.test_canvas = tkinter.Canvas(self, bg='lightblue', width=256*3, height=256*3, highlightthickness=0)
         self.test_canvas.grid(row=0, column=0, rowspan=7)
@@ -56,6 +59,7 @@ class WindowController(tkinter.Frame):
     def go_to_click_point(self):
         if self.droneController.click_point_lat != None and self.droneController.click_point_lon != None:
             print("let's go")
+            self.droneController.requestState = RequestState.GO_TO_CLICK_POINT
             self.droneController.go_to_click_point()
 
     def set_guid_to_click_point(self):
@@ -64,7 +68,12 @@ class WindowController(tkinter.Frame):
 
     def while_guid_to_task(self):
         if self.droneController.click_point_lat != None and self.droneController.click_point_lon != None:
+            self.droneController.requestState = RequestState.GO_TO_CLICK_POINT
+            print("state {}".format(self.droneController.requestState))
             self.droneController.guid_to_click_point()
+
+    def stop_drone(self):
+        self.droneController.requestState = RequestState.STOP_DRONE
 
     def start_pickup(self, event):
         self.droneController.click_point_lat, self.droneController.click_point_lon = self._mapCoordinator.getGPS(event.x, event.y)

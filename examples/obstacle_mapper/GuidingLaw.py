@@ -31,7 +31,7 @@ class GuidingLaw():
 
     def get_next_point(self):
         target_late = 1
-        obstacle_late = 2
+        obstacle_late = 6
 
         power_x = self.norm_target_power_x * target_late + self.norm_obstacle_power_x * obstacle_late
         power_y = self.norm_target_power_y * target_late + self.norm_obstacle_power_y * obstacle_late

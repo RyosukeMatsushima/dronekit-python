@@ -16,6 +16,7 @@ import statistics
 
 import ObstacleDetector
 from GuidingLaw import GuidingLaw
+from RequestState import RequestState
 
 class DroneController():
     def __init__(self):
@@ -32,6 +33,8 @@ class DroneController():
         self.sitl = None
 
         self.draw_obstacle_stock = []
+
+        self.requestState = RequestState.STOP_DRONE
 
 
         # Start SITL if no connection string specified
@@ -100,8 +103,13 @@ class DroneController():
     def guid_to_click_point(self):
         while not self.is_reached(self.click_point_lat, self.click_point_lon, 3):
             time.sleep(3)
-            print("go next point")   
             next_point = self.get_next_point_gps()
+            
+            if self.should_stop():
+                print("stop drone")
+                break
+
+            print("go next point")
             self.go_to(next_point['lat'], next_point['lon'], 20)
 
         print("reached click point")
@@ -118,6 +126,10 @@ class DroneController():
             if self.is_reached(lat, lon, 2):
                 print('reached to point')
                 break
+            
+            if self.should_stop():
+                print("stop drone")
+                break
 
 
     def is_reached(self, target_lat, target_lon, threshold):
@@ -125,6 +137,9 @@ class DroneController():
         lon = self.vehicle.location.global_frame.lon
         result = ObstacleDetector.vincenty_inverse(lat, lon, target_lat, target_lon)
         return result['distance'] < threshold
+
+    def should_stop(self):
+        return self.requestState == RequestState.STOP_DRONE
 
         
     def condition_yaw(self, heading, relative=False):
@@ -182,6 +197,10 @@ class DroneController():
                 guidingLaw.update_low2obstacle(yaw, obstacle_distance_list)
                 median_distance = statistics.median(obstacle_distance_list)
                 self.add_obstacle_to_map(median_distance, yaw)
+
+            if self.should_stop():
+                print("stop drone")
+                break
 
             self.condition_yaw(10, True)
 
