@@ -191,8 +191,8 @@ class DroneController():
                 print("stop drone")
                 break
 
+            obstacle_distance_list = []
             for j in range(0, 100):
-                obstacle_distance_list = []
                 distance = self.get_obstacle_distance()
 
                 # if 0 < self.vehicle.attitude.yaw < 30 * math.pi/180:  #for test
@@ -201,7 +201,7 @@ class DroneController():
                 if not distance == None:
                     obstacle_distance_list.append(distance)
 
-            if not obstacle_distance_list == []:
+            if len(obstacle_distance_list) > 30:
                 yaw = self.vehicle.attitude.yaw
                 guidingLaw.update_low2obstacle(yaw, obstacle_distance_list)
                 median_distance = statistics.median(obstacle_distance_list)

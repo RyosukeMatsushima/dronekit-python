@@ -43,7 +43,7 @@ class WindowController(tkinter.Frame):
         self.button_guid_to_click_point = tkinter.ttk.Button(self, text=u'guid to click point', command=self.set_guid_to_click_point)
         self.button_stop_drone = tkinter.ttk.Button(self, text=u'stop_drone', command=self.stop_drone)
 
-        self.label_description = tkinter.ttk.Label(self, text='Mouse position')
+        self.label_description = tkinter.ttk.Label(self, text='Request')
         self.label_description.grid(row=0, column=1)
         self.button_go_to_click_point.grid(row=1, column=1, columnspan=2)
         self.button_guid_to_click_point.grid(row=2, column=1,columnspan=2)
