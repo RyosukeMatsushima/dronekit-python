@@ -90,6 +90,7 @@ class DroneController():
             time.sleep(1)
 
     def go_to_click_point(self):
+        self.vehicle.mode = VehicleMode("GUIDED")
         print("task")
         lat = self.vehicle.location.global_frame.lat
         lon = self.vehicle.location.global_frame.lon
@@ -101,6 +102,7 @@ class DroneController():
         print("go to lat{0}, lon{1}".format(self.click_point_lat, self.click_point_lon))
 
     def guid_to_click_point(self):
+        self.vehicle.mode = VehicleMode("GUIDED")
         while not self.is_reached(self.click_point_lat, self.click_point_lon, 3):
             time.sleep(3)
             next_point = self.get_next_point_gps()
@@ -139,7 +141,9 @@ class DroneController():
         return result['distance'] < threshold
 
     def should_stop(self):
-        return self.requestState == RequestState.STOP_DRONE
+        is_stop_mode = self.vehicle.mode.name != "GUIDED"
+        is_stop_request = self.requestState == RequestState.STOP_DRONE
+        return is_stop_mode or is_stop_request
 
         
     def condition_yaw(self, heading, relative=False):
@@ -182,6 +186,11 @@ class DroneController():
         for i in range(0, 37):
             time.sleep(0.5)
 
+            
+            if self.should_stop():
+                print("stop drone")
+                break
+
             for j in range(0, 100):
                 obstacle_distance_list = []
                 distance = self.get_obstacle_distance()
@@ -197,10 +206,6 @@ class DroneController():
                 guidingLaw.update_low2obstacle(yaw, obstacle_distance_list)
                 median_distance = statistics.median(obstacle_distance_list)
                 self.add_obstacle_to_map(median_distance, yaw)
-
-            if self.should_stop():
-                print("stop drone")
-                break
 
             self.condition_yaw(10, True)
 
