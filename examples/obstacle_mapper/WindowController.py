@@ -22,8 +22,7 @@ class WindowController(tkinter.Frame):
 
         time.sleep(4)
 
-        home_lat = self.droneController.vehicle.location.global_frame.lat
-        home_lon = self.droneController.vehicle.location.global_frame.lon
+        home_lat, home_lon = self.droneController.get_drone_position()
         self._mapCoordinator = MapCoodinator(home_lat, home_lon, 19)
         self.create_widgets()
 
@@ -32,7 +31,8 @@ class WindowController(tkinter.Frame):
         print("drown points are {0}, {1}".format(point_x, point_y))
 
         # self.after(100, self.continuous_task)
-        self.droneController.arm_and_takeoff(20)
+        self.droneController.altitude = 1.2
+        self.droneController.arm_and_takeoff(1.2)
 
         self.continuous_task_thread = threading.Thread(target=self.continuous_task)
         self.continuous_task_thread.start()
@@ -105,7 +105,9 @@ class WindowController(tkinter.Frame):
             lat, lon = self.droneController.get_drone_position()
             self.draw_vehicle_position(lat, lon)
             self.get_obstacle()
-            time.sleep(1)
+            distance = self.droneController.get_obstacle_distance()
+            print("distance {}".format(distance))
+            time.sleep(2)
 
     def get_obstacle(self):
         stock = self.droneController.get_draw_obstacle_stock()

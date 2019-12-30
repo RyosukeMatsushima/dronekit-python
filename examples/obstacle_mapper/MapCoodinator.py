@@ -63,7 +63,7 @@ class MapCoodinator:
 
         for x in range(0, tile_width):
             for y in range(0, tile_height):
-                url = 'https://mt0.google.com/vt?x=' + str(start_x + x) + '&y=' + str(start_y + y) + '&z=' + str(
+                url = 'http://mt0.google.com/vt/lyrs=y&hl=en&x=' + str(start_x + x) + '&y=' + str(start_y + y) + '&z=' + str(
                     self._zoom)
 
                 current_tile = str(x) + '-' + str(y)
